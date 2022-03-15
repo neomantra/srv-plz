@@ -1,0 +1,64 @@
+# .goreleaser.yml file
+# Copyright (c) 2022 Neomantra BV
+# Documentation at http://goreleaser.com
+
+project_name: srv-plz
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - main: cmd/srv-plz/main.go
+    id: srv-plz
+    binary: srv-plz
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+
+archives:
+  - replacements:
+      darwin: Darwin
+      linux: Linux
+      windows: Windows
+      386: i386
+      amd64: x86_64
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+
+universal_binaries:
+  - replace: true
+
+release:
+  github:
+    owner: neomantra
+    name: srv-plz
+
+brews:
+  - homepage: https://github.com/neomantra/srv-plz
+    description: "SRV record extractor"
+    folder: Formula
+    tap:
+      owner: neomantra
+      name: homebrew-tap
+      branch: main
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    commit_author:
+      name: goreleaserbot
+      email: goreleaserbot@neomantra.net
+    install: |
+      bin.install "srv-plz"

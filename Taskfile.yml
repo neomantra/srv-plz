@@ -1,0 +1,28 @@
+version: '3'
+
+tasks:
+  build:
+    cmds:
+      - go build -o srv-plz cmd/srv-plz/main.go
+    sources:
+      - ./**/*.go
+    generates:
+      - srv-plz
+    silent: false
+
+  clean:
+    cmds:
+      - rm srv-plz
+
+  test:
+    cmds:
+      #- go test neomantra/srv-plz/pkg/srv-plz
+    silent: false
+
+  default:
+    cmds:
+      - task: test
+      - task: build
+
+
+
