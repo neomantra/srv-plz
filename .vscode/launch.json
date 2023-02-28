@@ -12,7 +12,21 @@
             "program": "${workspaceFolder}/cmd/srv-plz",
             "args": ["-r", "test.service.consul"],
             "env": {
-                "SRV_DNS": "10.4.20.69:8600"
+                "SRV_DNS": "127.0.0.1:8600"
+            }
+        },
+        {
+            "name": "srv-plz command",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/cmd/srv-plz",
+            "args": [
+                "-r", "webserver.service.consul", "-c", "--",
+                "echo", "hello:%SRV%:hello"
+            ],
+            "env": {
+                "SRV_DNS": "127.0.0.1:8600"
             }
         }
     ]

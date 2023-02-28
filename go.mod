@@ -1,6 +1,6 @@
 module neomantra/srv-plz
 
-go 1.17
+go 1.20
 
 require (
 	github.com/miekg/dns v1.1.46

@@ -11,7 +11,7 @@ import (
 
 ////////////////////////////////////////////////////////////////////////////////////
 
-func LookupSRVSystem(name string, recurse bool) ([]*net.SRV, error) {
+func LookupSRVSystemNet(name string, recurse bool) ([]*net.SRV, error) {
 	_, records, err := net.LookupSRV("", "", name)
 	if err != nil {
 		return records, err
@@ -33,7 +33,24 @@ func LookupSRVSystem(name string, recurse bool) ([]*net.SRV, error) {
 
 /////////////////////////////////////////////////////////////////////////////////////
 
-func LookupSRVCustom(name string, dnsResolver string, recurse bool) ([]dns.SRV, error) {
+func LookupSRVSystem(name string, recurse bool) ([]*dns.SRV, error) {
+	var dnsRecords []*dns.SRV
+	netRecords, err := LookupSRVSystemNet(name, recurse)
+	for _, netRecord := range netRecords {
+		dnsRecords = append(dnsRecords, &dns.SRV{
+			Hdr:      dns.RR_Header{},
+			Priority: netRecord.Priority,
+			Weight:   netRecord.Weight,
+			Port:     netRecord.Port,
+			Target:   netRecord.Target,
+		})
+	}
+	return dnsRecords, err
+}
+
+/////////////////////////////////////////////////////////////////////////////////////
+
+func LookupSRVCustom(name string, dnsResolver string, recurse bool) ([]*dns.SRV, error) {
 	c := dns.Client{}
 	m := dns.Msg{}
 	if !strings.HasSuffix(name, ".") {
@@ -47,7 +64,7 @@ func LookupSRVCustom(name string, dnsResolver string, recurse bool) ([]dns.SRV, 
 	if len(r.Answer) == 0 {
 		return nil, nil
 	}
-	var records []dns.SRV
+	var records []*dns.SRV
 	for _, ans := range r.Answer {
 		srvRecord := *ans.(*dns.SRV)
 		if recurse && net.ParseIP(srvRecord.Target) == nil {
@@ -64,7 +81,7 @@ func LookupSRVCustom(name string, dnsResolver string, recurse bool) ([]dns.SRV, 
 				srvRecord.Target = aRecord.A.String()
 			}
 		}
-		records = append(records, srvRecord)
+		records = append(records, &srvRecord)
 	}
 	return records, nil
 }
