@@ -1,4 +1,4 @@
-module neomantra/srv-plz
+module github.com/neomantra/srv-plz
 
 go 1.20
 
