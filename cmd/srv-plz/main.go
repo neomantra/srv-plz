@@ -9,7 +9,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"neomantra/srv-plz/pkg/lookup"
+	"github.com/neomantra/srv-plz/pkg/lookup"
 
 	"github.com/miekg/dns"
 	"github.com/spf13/pflag"
