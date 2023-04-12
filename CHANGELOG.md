@@ -1,6 +1,10 @@
 Changelog
 =========
 
+## v0.4.0 (2023-04-12)
+
+ * Add `-a` and `-6` to check A/AAAA instead of SRV records
+
 ## v0.3.0 (2023-03-31)
 
  * Fix module path to `github.com/neomantra/srv-plz/pkg/lookup`

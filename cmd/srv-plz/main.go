@@ -30,7 +30,7 @@ If no DNS resolver is specified, the system resolver is used.
 
 The default output is "host:port".  This may be customized with the --template
 argument.  Possible fields are Target, Port, Priority, and Weight.
-Thus the default template is "{{.Target}}:{{.Port}}\n".
+The default template is "{{.Target}}:{{.Port}}\n" for SRV records and "{{.Target}}\n" for A/AAAA records.
 
 If "--command" is flagged, each SRV record will be injected into the command
 specified after "--", using "%%SRV%%" or the "--match" argument as a matcher.  Example:
@@ -39,6 +39,9 @@ specified after "--", using "%%SRV%%" or the "--match" argument as a matcher.  E
 
 Arguments:
 `
+
+const DEFAULT_SRV_TEMPLATE_STR = "{{.Target}}:{{.Port}}"
+const DEFAULT_A_TEMPLATE_STR = "{{.Target}}"
 
 /////////////////////////////////////////////////////////////////////////////////////
 
@@ -49,14 +52,18 @@ func main() {
 	var templateStr string
 	var invokeCommand bool
 	var srvMatcher string
+	var checkARecord bool
+	var checkAAAARecord bool
 	var showHelp bool
 
 	pflag.StringVarP(&dnsServer, "dns", "d", "", "DNS resolver to use (must be in form IP:port)")
 	pflag.BoolVarP(&recurse, "recurse", "r", false, "recurse with the same resolver")
 	pflag.Uint32VarP(&numLimit, "limit", "l", 1, "only return N records")
-	pflag.StringVarP(&templateStr, "template", "t", "{{.Target}}:{{.Port}}", "output using template")
+	pflag.StringVarP(&templateStr, "template", "t", DEFAULT_SRV_TEMPLATE_STR, "output using template")
 	pflag.BoolVarP(&invokeCommand, "command", "c", false, "for each record, invoke exec.Command on the args after '--', replacing %SRV% with its template")
 	pflag.StringVarP(&srvMatcher, "match", "m", "%SRV%", "specify forward args after '--' to shell with <srv> replaced by the lookup")
+	pflag.BoolVarP(&checkARecord, "a", "a", false, "Check A records, not SRV records")
+	pflag.BoolVarP(&checkAAAARecord, "aaaa", "6", false, "Check AAAA records, not SRV records")
 	pflag.BoolVarP(&showHelp, "help", "h", false, "show help")
 	pflag.Parse()
 
@@ -72,6 +79,12 @@ func main() {
 		fmt.Fprintf(os.Stdout, usageFormat, os.Args[0])
 		pflag.PrintDefaults()
 		os.Exit(0)
+	}
+
+	if (checkARecord || checkAAAARecord) && templateStr == DEFAULT_SRV_TEMPLATE_STR {
+		// switch default template if we are checking A/AAAA records
+		// but only if user has not changed it
+		templateStr = DEFAULT_A_TEMPLATE_STR
 	}
 
 	// setup resolver
@@ -102,37 +115,88 @@ func main() {
 		os.Exit(0)
 	}
 
-	for _, service := range serviceArgs {
-		var records []*dns.SRV
-		var err error
-		if len(dnsServer) != 0 {
-			records, err = lookup.LookupSRVCustom(service, dnsServer, recurse)
-		} else {
-			records, err = lookup.LookupSRVSystem(service, recurse)
-		}
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%v\n", err)
-			continue
-		}
-
-		for _, record := range records {
-			builder := new(strings.Builder)
-			err := tmpl.Execute(builder, record)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "template failed: %v\n", err)
-				continue
-			}
-			// check to invoke Command
-			if invokeCommand {
-				err := replaceAndCommand(builder.String(), srvMatcher, commandArgs)
+	for _, serviceName := range serviceArgs {
+		var srvRecords []*dns.SRV
+		// check A/AAAA records?
+		if checkARecord || checkAAAARecord {
+			// lookup A/AAAA using system resolver?
+			if len(dnsServer) == 0 {
+				records, err := lookup.LookupSystem(serviceName)
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "%v\n", err)
+					continue
+				}
+				for _, record := range records {
+					// filter out A/AAAA records, per flags
+					if (checkARecord && checkAAAARecord) ||
+						((checkARecord && strings.Contains(record, ".")) ||
+							(checkAAAARecord && strings.Contains(record, ":"))) {
+						srvRecords = append(srvRecords, &dns.SRV{Target: record})
+					}
 				}
 			} else {
-				// otherwise write to stdout
-				os.Stdout.WriteString(builder.String())
-				os.Stdout.WriteString("\n")
+				// lookup SRV with system resolver
+				srvRecords, err = lookup.LookupSRVSystem(serviceName, recurse)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "%v\n", err)
+					continue
+				}
 			}
+		} else { // Custom Resolver
+			if checkARecord || checkAAAARecord {
+				// lookup A using custom resolver?
+				if checkARecord {
+					records, err := lookup.LookupACustom(serviceName, dnsServer)
+					if err != nil {
+						fmt.Fprintf(os.Stderr, "%v\n", err)
+						continue
+					}
+					for _, record := range records {
+						srvRecords = append(srvRecords, &dns.SRV{Target: record})
+					}
+				}
+				// lookup AAAA using custom resolver?
+				if checkAAAARecord {
+					records, err := lookup.LookupAAAACustom(serviceName, dnsServer)
+					if err != nil {
+						fmt.Fprintf(os.Stderr, "%v\n", err)
+						continue
+					}
+					for _, record := range records {
+						srvRecords = append(srvRecords, &dns.SRV{Target: record})
+					}
+				}
+			} else {
+				// lookup SRV with custom resolver
+				srvRecords, err = lookup.LookupSRVCustom(serviceName, dnsServer, recurse)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "%v\n", err)
+					continue
+				}
+			}
+		}
+		handleRecords(srvRecords, invokeCommand, srvMatcher, commandArgs, *tmpl)
+	}
+}
+
+func handleRecords(records []*dns.SRV, invokeCommand bool, srvMatcher string, commandArgs []string, tmpl template.Template) {
+	for _, record := range records {
+		builder := new(strings.Builder)
+		err := tmpl.Execute(builder, record)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "template failed: %v\n", err)
+			continue
+		}
+		// check to invoke Command
+		if invokeCommand {
+			err := replaceAndCommand(builder.String(), srvMatcher, commandArgs)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "%v\n", err)
+			}
+		} else {
+			// otherwise write to stdout
+			os.Stdout.WriteString(builder.String())
+			os.Stdout.WriteString("\n")
 		}
 	}
 }

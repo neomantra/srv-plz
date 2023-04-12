@@ -11,6 +11,7 @@ import (
 
 ////////////////////////////////////////////////////////////////////////////////////
 
+// LookupSRVSystemNet resolves a DNS SRV name using the Golang resolver, returning net.SRV records.
 func LookupSRVSystemNet(name string, recurse bool) ([]*net.SRV, error) {
 	_, records, err := net.LookupSRV("", "", name)
 	if err != nil {
@@ -33,6 +34,7 @@ func LookupSRVSystemNet(name string, recurse bool) ([]*net.SRV, error) {
 
 /////////////////////////////////////////////////////////////////////////////////////
 
+// LookupSRVSystem resolves a DNS SRV name using the Golang resolver, returning dns.SRV records.
 func LookupSRVSystem(name string, recurse bool) ([]*dns.SRV, error) {
 	var dnsRecords []*dns.SRV
 	netRecords, err := LookupSRVSystemNet(name, recurse)
@@ -50,6 +52,7 @@ func LookupSRVSystem(name string, recurse bool) ([]*dns.SRV, error) {
 
 /////////////////////////////////////////////////////////////////////////////////////
 
+// LookupSRVCustom resolves a DNS name using a custom resolver (via github.com/miekg/dns), returning dns.SRV records.
 func LookupSRVCustom(name string, dnsResolver string, recurse bool) ([]*dns.SRV, error) {
 	c := dns.Client{}
 	m := dns.Msg{}

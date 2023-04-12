@@ -4,8 +4,6 @@ tasks:
   build:
     cmds:
       - go build -o srv-plz cmd/srv-plz/main.go
-    sources:
-      - ./**/*.go
     generates:
       - srv-plz
     silent: false

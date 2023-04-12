@@ -30,7 +30,7 @@ If no DNS resolver is specified, the system resolver is used.
 
 The default output is "host:port".  This may be customized with the --template
 argument.  Possible fields are Target, Port, Priority, and Weight.
-Thus the default template is "{{.Target}}:{{.Port}}\n".
+The default template is "{{.Target}}:{{.Port}}\n" for SRV records and "{{.Target}}\n" for A/AAAA records.
 
 If "--command" is flagged, each SRV record will be injected into the command
 specified after "--", using "%SRV%" or the "--match" argument as a matcher.  Example:
@@ -38,6 +38,8 @@ specified after "--", using "%SRV%" or the "--match" argument as a matcher.  Exa
     srv-plz webserver.service.consul -r -c -- curl https://%SRV%/health
 
 Arguments:
+  -a, --a                 Check A records, not SRV records
+  -6, --aaaa              Check AAAA records, not SRV records
   -c, --command           for each record, invoke exec.Command on the args after '--', replacing %SRV% with its template
   -d, --dns string        DNS resolver to use (must be in form IP:port)
   -h, --help              show help
