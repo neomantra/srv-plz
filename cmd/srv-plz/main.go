@@ -134,16 +134,7 @@ func main() {
 						srvRecords = append(srvRecords, &dns.SRV{Target: record})
 					}
 				}
-			} else {
-				// lookup SRV with system resolver
-				srvRecords, err = lookup.LookupSRVSystem(serviceName, recurse)
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "%v\n", err)
-					continue
-				}
-			}
-		} else { // Custom Resolver
-			if checkARecord || checkAAAARecord {
+			} else { // lookup A/AAAA using custom resolver
 				// lookup A using custom resolver?
 				if checkARecord {
 					records, err := lookup.LookupACustom(serviceName, dnsServer)
@@ -166,8 +157,15 @@ func main() {
 						srvRecords = append(srvRecords, &dns.SRV{Target: record})
 					}
 				}
-			} else {
-				// lookup SRV with custom resolver
+			}
+		} else { // Lookup SRV record
+			if len(dnsServer) == 0 { // system resolver?
+				srvRecords, err = lookup.LookupSRVSystem(serviceName, recurse)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "%v\n", err)
+					continue
+				}
+			} else { // custom resolver
 				srvRecords, err = lookup.LookupSRVCustom(serviceName, dnsServer, recurse)
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "%v\n", err)
