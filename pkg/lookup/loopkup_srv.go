@@ -69,22 +69,23 @@ func LookupSRVCustom(name string, dnsResolver string, recurse bool) ([]*dns.SRV,
 	}
 	var records []*dns.SRV
 	for _, ans := range r.Answer {
-		srvRecord := *ans.(*dns.SRV)
-		if recurse && net.ParseIP(srvRecord.Target) == nil {
-			m2 := dns.Msg{}
-			m2.SetQuestion(srvRecord.Target, dns.TypeA)
-			m2.RecursionDesired = true
-			r2, _, err := c.Exchange(&m2, dnsResolver)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "error: %v\n", err)
-				return nil, err
+		if srvRecord, ok := ans.(*dns.SRV); ok && srvRecord != nil {
+			if recurse && net.ParseIP(srvRecord.Target) == nil {
+				m2 := dns.Msg{}
+				m2.SetQuestion(srvRecord.Target, dns.TypeA)
+				m2.RecursionDesired = true
+				r2, _, err := c.Exchange(&m2, dnsResolver)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "error: %v\n", err)
+					return nil, err
+				}
+				if len(r2.Answer) != 0 {
+					aRecord := r2.Answer[0].(*dns.A)
+					srvRecord.Target = aRecord.A.String()
+				}
 			}
-			if len(r2.Answer) != 0 {
-				aRecord := r2.Answer[0].(*dns.A)
-				srvRecord.Target = aRecord.A.String()
-			}
+			records = append(records, srvRecord)
 		}
-		records = append(records, &srvRecord)
 	}
 	return records, nil
 }

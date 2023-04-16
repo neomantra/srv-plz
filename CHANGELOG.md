@@ -1,9 +1,11 @@
 Changelog
 =========
 
-## v0.4.0 (2023-04-12)
+## v0.4.0 (2023-04-16)
 
  * Add `-a` and `-6` to check A/AAAA instead of SRV records
+ * Fix fatal error processing unexpected records (#1)
+ * Custom DNS (--dns) can now be specified without port (appends :53)
 
 ## v0.3.0 (2023-03-31)
 
