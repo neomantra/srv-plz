@@ -23,8 +23,8 @@ usage:  srv-plz <options> [service1 [service2 [...]]] [-- command]
 
 srv-plz resolves DNS SRV records and outputs the result.
 
-The resolver is specified with "--dns <ip:port>" argument or by setting
-the SRV_DNS environment variable.  The CLI argument takes precedent.
+The resolver is specified with "--dns <IP:port>" argument or by setting
+the SRV_DNS environment variable.  If only an IP address is set, port 53 is used.
 
 If no DNS resolver is specified, the system resolver is used.
 
@@ -41,7 +41,7 @@ Arguments:
   -a, --a                 Check A records, not SRV records
   -6, --aaaa              Check AAAA records, not SRV records
   -c, --command           for each record, invoke exec.Command on the args after '--', replacing %SRV% with its template
-  -d, --dns string        DNS resolver to use (must be in form IP:port)
+  -d, --dns string        DNS resolver to use. Must be in form IP (using port 53) or IP:port
   -h, --help              show help
   -l, --limit uint32      only return N records (default 1)
   -m, --match string      specify forward args after '--' to shell with <srv> replaced by the lookup (default "%SRV%")

@@ -23,8 +23,8 @@ var usageFormat string = `usage:  %s <options> [service1 [service2 [...]]] [-- c
 
 srv-plz resolves DNS SRV records and outputs the result.
 
-The resolver is specified with "--dns <ip:port>" argument or by setting
-the SRV_DNS environment variable.  The CLI argument takes precedent.
+The resolver is specified with "--dns <IP:port>" argument or by setting
+the SRV_DNS environment variable.  If only an IP address is set, port 53 is used.
 
 If no DNS resolver is specified, the system resolver is used.
 
@@ -56,7 +56,7 @@ func main() {
 	var checkAAAARecord bool
 	var showHelp bool
 
-	pflag.StringVarP(&dnsServer, "dns", "d", "", "DNS resolver to use (must be in form IP:port)")
+	pflag.StringVarP(&dnsServer, "dns", "d", "", "DNS resolver to use. Must be in form IP (using port 53) or IP:port")
 	pflag.BoolVarP(&recurse, "recurse", "r", false, "recurse with the same resolver")
 	pflag.Uint32VarP(&numLimit, "limit", "l", 1, "only return N records")
 	pflag.StringVarP(&templateStr, "template", "t", DEFAULT_SRV_TEMPLATE_STR, "output using template")
@@ -96,8 +96,14 @@ func main() {
 		// check addr:port form is valid
 		_, _, err := net.SplitHostPort(dnsServer)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "invalid --dns error: %v\n", err)
-			os.Exit(1)
+			// https://cs.opensource.google/go/go/+/refs/tags/go1.20.3:src/net/ipsock.go;l=166
+			const missingPort = "missing port in address"
+			if strings.Contains(err.Error(), missingPort) { // this is OK, we default to port 53
+				dnsServer += ":53"
+			} else {
+				fmt.Fprintf(os.Stderr, "invalid --dns error: %v\n", err)
+				os.Exit(1)
+			}
 		}
 	}
 
